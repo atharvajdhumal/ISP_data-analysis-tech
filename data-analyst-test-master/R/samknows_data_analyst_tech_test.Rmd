@@ -1,0 +1,182 @@
+#                                                 Solution Code
+---
+title: "SamKnows Data Analyst Test"
+author: "Atharva Dhumal"
+output: html_notebook
+---
+
+#                                                 1 - Packages
+```{r, warning=FALSE,error=FALSE}
+library("dplyr")                                    # Load dplyr package
+library("readr")                                    # Load readr package
+library("purrr")                                    # Load purrr package
+library("lubridate")                                # Load lubridate package
+library("ggplot2")                                  # Load ggplot2 package
+library("knitr")                                    # Load knitr package
+library("dlookr")                                   # Load dlookr package
+library("arsenal")                                  # Load arsenal package
+library("plotly")                                   # Load plotly package
+library("GGally")                                   # Load GGally package
+library("psych")                                    # Load psych package
+```
+
+```{r, warning=FALSE,error=FALSE}
+#                                             2 - Data Import and Cleaning
+## Importing available dataset
+download_data <- read.csv("C:\\Users\\athar\\Desktop\\SamKnows\\data-analyst-test-master\\data-analyst-test-master\\data\\download_speed_measurements.csv", header=TRUE, stringsAsFactors=FALSE)
+
+upload_data <- read.csv("C:\\Users\\athar\\Desktop\\SamKnows\\data-analyst-test-master\\data-analyst-test-master\\data\\upload_speed_measurements.csv", header=TRUE, stringsAsFactors=FALSE)
+
+person_data <- read.csv("C:\\Users\\athar\\Desktop\\SamKnows\\data-analyst-test-master\\data-analyst-test-master\\data\\details_for_each_person.csv", header=TRUE, stringsAsFactors=FALSE)
+```
+
+#                                             Combining all the available datasets
+```{r, warning=FALSE,error=FALSE}
+## Increasing allocated memory to avoid memory allocation error
+memory.limit(2400000)
+
+combine_data <- list.files(path = "C:\\Users\\athar\\Desktop\\SamKnows\\data-analyst-test-master\\data-analyst-test-master\\data", ## Identify all CSV files
+                       pattern = "*.csv", full.names = TRUE) %>% 
+  lapply(read_csv) %>%                                     # Store all files in list
+  reduce(full_join, by = "person_id")                      # Full-join data sets into one data set
+  
+join_data <- na.omit(combine_data)                          # Removing null values (False values omitted too from                                                                               did_test_complete_successfully)
+```
+
+```{r, warning=FALSE,error=FALSE}
+## 2(a) Has the structure "person_id, city, type_of_broadband_connection, name_of_isp, average_download_speed, average_upload_speed"
+join_data_average <- join_data %>% select(person_id, city, type_of_broadband_connection, name_of_isp, measured_download_speed_in_Mbps, measured_upload_speed_in_Mbps)
+
+## 2(b) Has 1 line per person (i.e. calculate a single average download and upload speed for each person)
+# Apply a function to each cell of a ragged array, that is to each (non-empty) group of values given by a unique combination of the levels of certain factors
+average_download <- tapply(join_data_average$measured_download_speed_in_Mbps, join_data_average$person_id, mean)
+head(average_download)
+
+average_upload <- tapply(join_data_average$measured_upload_speed_in_Mbps, join_data_average$person_id, mean)
+head(average_upload)
+
+data <- person_data                                 # Copying details_for_each_person data to a new variable
+data$average_download <- average_download           # Combining average_download data with the structure
+data$average_upload <- average_upload               # Combining average_upload data with the structure
+data                                                # Print data to RStudio console
+```
+
+```{r, warning=FALSE,error=FALSE}
+## 2(c) Only contains people in the cities 'Samsville' and 'Databury'
+city <- filter(join_data, city == "Databury" | city == "Samsville")        # Data filter for cities
+city                                                                       # Print data to RStudio console
+
+
+## 2(d) Only contains download and upload measurements which have run successfully (i.e. put a filter on did_test_complete_successfully)
+successful_test <- filter(join_data, did_test_complete_successfully.x == "TRUE" | did_test_complete_successfully.y == "TRUE")                                                                                # Data filter for Test
+successful_test                                                            # Print data to RStudio console
+```
+
+```{r, warning=FALSE,error=FALSE}
+## 2(e) Only contains tests from the month of January 2021 (i.e. put a filter on time_of_measurement).
+date <- join_data
+date$download_time <- as.Date((join_data$time_of_measurement.x))
+
+date$upload_time <- as.Date((join_data$time_of_measurement.y))
+date
+
+date_filter <- filter(date, download_time > "2021-01-01" | upload_time > "2021-01-01")    #Data filter for date
+date_filter                                                                               # Print data to RStudio console
+```
+
+```{r, warning=FALSE,error=FALSE}
+## 2(Optional) Here we are calculating the average download speed for the 60% of days, i.e. taking mean value for the 60% of days instead of total number of days. That is why we can see the difference between average download speed and the newly created percentile for the average download speed.
+percentile <- download_data %>% 
+  filter(month(time_of_measurement) == 1) %>% 
+  mutate(date = gsub("T.*", "", time_of_measurement)) %>%                  # Create a new variable from a data set
+  group_by(person_id, date) %>% 
+  summarise(download_average = 
+              mean(measured_download_speed_in_Mbps, na.rm = T)) %>% 
+  ungroup() %>% 
+  group_by(person_id) %>% 
+  arrange(download_average) %>% 
+  summarize(average_download_speed_60_percentile = quantile(download_average, 0.6))
+
+data_percentile <- merge(data, percentile, by = "person_id")               # Combining the data with the structured dataset
+
+## Save a csv file
+write.csv(data_percentile,"C:\\Users\\athar\\Desktop\\R\\data_import_and_cleaning.csv", row.names = FALSE)
+```
+
+
+#                                                               3 - Data Quality
+```{r, warning=FALSE,error=FALSE}
+## In the combined dataframe, 20.68% data of download speed and 20.66% data of upload speed have null values
+summary(combine_data)
+
+##Data is considered “complete” when it fulfills expectations of comprehensiveness. We analyze the missing values in the dataset.
+diagnose(combine_data) %>%
+  select(-unique_count, -unique_rate)%>%
+  filter(missing_count != 0)%>%
+  arrange(desc(missing_percent))%>% 
+  knitr::kable(align = 'c', format = "markdown")
+
+## At a first glance it is possible to determine the shared variables between datasets. In particular, person_id is the same field used in all three datasets.
+colnames(combine_data)
+
+## The following sections show the uniqueness value of each variable in the dataset.
+diagnose(combine_data) %>%
+  select(-missing_count,-missing_percent)%>%
+  arrange(desc(unique_count))
+
+## After dropping the null values, everything in the "data" seems to be alright with the type of data of the variables, minimum values, maximum values, format, and there are no outliers. Therefore, we assume the accuracy of the datasets given is high.
+summary(data)
+
+## ##Data is considered “complete” when it fulfills expectations of comprehensiveness. We analyze the missing values in the dataset.
+diagnose(data) %>%
+  select(-unique_count, -unique_rate)%>%
+  filter(missing_count != 0)%>%
+  arrange(desc(missing_percent))%>% 
+  knitr::kable(align = 'c', format = "markdown")
+
+## The following sections show the uniqueness value of each variable in the dataset.
+diagnose(data) %>%
+  select(-missing_count,-missing_percent)%>%
+  arrange(desc(unique_count))
+```
+
+##                                                4 - Data summarization and presentation
+```{r, warning=FALSE,error=FALSE}
+ # 4(a) Now that you have a table which gives the average download and upload speed for each person, make a couple of summary tables which illustrate the differences in download and upload speed between ISPs for each connection type.
+
+# The describyBY() is used to summarise the details for the data included of number of observations, mean, median, trimmed means, minimum, maximum, range, skew, kurtosis, and standard error of the mean for grouped data. These table show the differences between different cities, ISP's, and type of broadband connection for the download and upload speed.
+describeBy(data, list(data$city, data$name_of_isp, data$type_of_broadband_connection))
+
+## 4(b) Make a visualization of the distribution of average download speeds by ISP by city by connection type, which is designed so that a technically aware stakeholder can read the graph and see the differences between ISP for each package in each city.
+ggplot(data, 
+        aes(x = name_of_isp, y = average_download, group = name_of_isp, fill = name_of_isp)) + 
+        geom_boxplot(alpha=0.7) + 
+        theme(legend.position = "none") + 
+        facet_wrap(~ city) + 
+        scale_fill_brewer(palette = "Oranges") +
+        theme_minimal()+
+        ggtitle("Average download speed for cities according to ISP's") +
+        theme(plot.title = element_text(hjust = 0.5))+
+        labs(x = "ISP", y = "Average Download Speed")
+
+## 4(c) If I am a consumer living in Databury and I have a Fibre connection, am I going to get a better/worse speed from Fibrelicious or from Useus? If so, how much better/worse?
+consumer <- filter(join_data, city == "Databury")        #Data filter for cities
+consumer2 <- filter(consumer, type_of_broadband_connection == "Fibre")        #Data filter for broadband connecion
+consumer2                                                                     # Print data to RStudio console
+
+ggplot(consumer2, 
+        aes(x = name_of_isp, y = measured_download_speed_in_Mbps, group = name_of_isp, fill = name_of_isp)) + 
+        geom_boxplot(alpha=0.7) + 
+        theme(legend.position = "none") + 
+        facet_wrap(~ city) + 
+        scale_fill_brewer(palette = "Blues") +
+        theme_minimal()+
+        ggtitle("") +
+#       theme(plot.title = element_text(hjust = 0.5))+
+        labs(x = "ISP", y = "Download Speed")
+
+consumer3 <- filter(consumer2, name_of_isp == "Fibrelicious")        #Data filter for name of isp
+max(consumer3$measured_download_speed_in_Mbps)
+consumer4 <- filter(consumer2, name_of_isp == "Useus")               #Data filter for name of isp
+max(consumer4$measured_download_speed_in_Mbps)
+```
