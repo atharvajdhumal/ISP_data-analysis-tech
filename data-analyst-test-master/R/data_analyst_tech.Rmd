@@ -1,6 +1,6 @@
 #                                                 Solution Code
 ---
-title: "SamKnows Data Analyst Test"
+title: "Data Analyst"
 author: "Atharva Dhumal"
 output: html_notebook
 ---
