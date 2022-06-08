@@ -1,11 +1,7 @@
-## Note to candidates:
+## Note:
 ## 
-##   You will want to make your changes to R/samknows_data_analyst_tech_test.R, NOT this file.
-##     (if you have any comments on how the data is simulated, though, we'd love to hear them)
-##   This script is kept in the repo for interest (plus, if you're able to reverse engineer what it's doing,
-##     then you're going to ace the test anyway!)
-##   All of the data in the data/ folder is simulated from this script, but it does have aspects in common with real data
-##     that our systems collect.
+##   You will want to make your changes to R/data_analyst_tech.R, NOT this file.
+##   All of the data in the data/ folder is simulated from this script, but it does have aspects in common with real data.
 
 
 ## ----------------- set up environment
