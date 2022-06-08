@@ -1,16 +1,9 @@
-# Samknows Data Analyst Tech Test
-
-Please add your solution code for the following questions to `R/samknows_data_analyst_tech_test.R`. 
-
-Throughout, the main things being assessed are:
+# Data Analyst Tech
 
 * Design        e.g. variable names, code readability, having a logical flow and process, labeling of graphs
 * Data quality  e.g. paying attention to outliers, missing data etc.
 * Explanations  e.g. justifying your approach, comments in the code file will be sufficient
   
-We are looking for a well-commented code file, and requested outputs saved in `output/`. 
-
-Of course if you find it easier to use R Markdown to provide explanations/justifications in a report format that will be more than acceptable. 
 
 ## 1 - Packages
 Load any relevant packages for reshaping data, joining, visualization, and handling datetimes.
